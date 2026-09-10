@@ -14,6 +14,7 @@ $tmpDirs = [
     $storagePath . '/logs',
     '/tmp/views',
     '/tmp/cache',
+    '/tmp/bootstrap/cache',
 ];
 
 foreach ($tmpDirs as $dir) {
@@ -22,11 +23,26 @@ foreach ($tmpDirs as $dir) {
     }
 }
 
-// Set environment variable for storage if running in serverless environment
-if (isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL'])) {
-    putenv('APP_STORAGE=' . $storagePath);
-    $_ENV['APP_STORAGE'] = $storagePath;
-    $_SERVER['APP_STORAGE'] = $storagePath;
+// Ensure serverless environment variables and cache locations
+$envVars = [
+    'APP_STORAGE'         => $storagePath,
+    'VIEW_COMPILED_PATH'  => $storagePath . '/framework/views',
+    'APP_CONFIG_CACHE'    => '/tmp/config.php',
+    'APP_EVENTS_CACHE'    => '/tmp/events.php',
+    'APP_PACKAGES_CACHE'  => '/tmp/packages.php',
+    'APP_ROUTES_CACHE'    => '/tmp/routes.php',
+    'APP_SERVICES_CACHE'  => '/tmp/services.php',
+    'SESSION_DRIVER'      => 'cookie',
+    'CACHE_STORE'         => 'array',
+    'LOG_CHANNEL'         => 'stderr',
+];
+
+foreach ($envVars as $key => $val) {
+    if (!isset($_ENV[$key]) && !getenv($key)) {
+        putenv("$key=$val");
+        $_ENV[$key] = $val;
+        $_SERVER[$key] = $val;
+    }
 }
 
 // Forward all requests to public/index.php
