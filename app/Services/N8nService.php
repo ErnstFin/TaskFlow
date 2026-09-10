@@ -18,12 +18,15 @@ class N8nService
      */
     public function sendTaskWebhook(Task $task, ?string $webhookUrl = null): array
     {
-        $rawUrl = $webhookUrl ?: config('services.n8n.webhook_url', env('N8N_WEBHOOK_URL', 'http://127.0.0.1:5678/webhook/taskflow-task'));
+        $rawUrl = $webhookUrl 
+            ?: session('n8n_webhook_url')
+            ?: request()->cookie('n8n_webhook_url')
+            ?: config('services.n8n.webhook_url', env('N8N_WEBHOOK_URL', 'http://127.0.0.1:5678/webhook/taskflow-task'));
 
         if (empty($rawUrl)) {
             return [
                 'success' => false,
-                'message' => 'N8N_WEBHOOK_URL belum dikonfigurasi di file .env',
+                'message' => 'N8N_WEBHOOK_URL belum dikonfigurasi di file .env atau pengaturan',
             ];
         }
 
@@ -52,11 +55,12 @@ class N8nService
 
         foreach ($urlsToTry as $targetUrl) {
             try {
-                $response = Http::timeout(5)
+                $response = Http::timeout(6)
                     ->withHeaders([
-                        'Content-Type' => 'application/json',
-                        'Accept'       => 'application/json',
-                        'User-Agent'   => 'TaskFlow-App/1.0',
+                        'Content-Type'                => 'application/json',
+                        'Accept'                      => 'application/json',
+                        'User-Agent'                  => 'TaskFlow-App/1.0',
+                        'ngrok-skip-browser-warning'  => 'true',
                     ])
                     ->post($targetUrl, $payload);
 

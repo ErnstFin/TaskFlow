@@ -587,12 +587,21 @@
             </div>
             
             <div style="font-size: 13px; color: #cbd5e1; line-height: 1.6;">
-                <p style="margin-bottom: 14px;">
-                    Setiap kali task baru dibuat, TaskFlow akan mengirimkan payload JSON ke webhook n8n berikut:
-                </p>
-                <div style="background: #0f172a; padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-input); margin-bottom: 16px;">
-                    <code style="color: #38bdf8;">{{ env('N8N_WEBHOOK_URL', 'http://localhost:5678/webhook/taskflow-task') }}</code>
-                </div>
+                <form action="{{ route('settings.webhook') }}" method="POST" style="margin-bottom: 20px;">
+                    @csrf
+                    <label class="form-label" for="n8n_webhook_url" style="color: #a5b4fc; font-weight: 700;">
+                        🔗 Endpoint URL Webhook n8n Aktif:
+                    </label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="url" name="n8n_webhook_url" id="n8n_webhook_url" class="form-control" 
+                               value="{{ session('n8n_webhook_url') ?: request()->cookie('n8n_webhook_url') ?: config('services.n8n.webhook_url', env('N8N_WEBHOOK_URL', 'http://127.0.0.1:5678/webhook/taskflow-task')) }}" 
+                               placeholder="Contoh: https://xxxx.ngrok-free.dev/webhook-test/taskflow-task" required>
+                        <button type="submit" class="btn btn-primary" style="white-space: nowrap;">💾 Simpan</button>
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+                        💡 <strong>Tips ngrok:</strong> Anda bisa langsung tempel URL publik ngrok (misal: <code>https://slinky-reopen-eggplant.ngrok-free.dev/webhook-test/taskflow-task</code>) dan klik Simpan.
+                    </div>
+                </form>
 
                 <div style="font-weight: 700; color: #ffffff; margin-bottom: 6px;">Format JSON Payload:</div>
                 <pre style="background: #0f172a; padding: 12px; border-radius: var(--radius-md); font-size: 12px; color: #34d399; overflow-x: auto; margin-bottom: 20px;">

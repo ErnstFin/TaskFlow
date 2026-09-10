@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\TaskController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -20,11 +22,19 @@ Route::patch('/tasks/{task}/toggle', [TaskController::class, 'toggleStatus'])->n
 Route::post('/tasks/{task}/webhook', [TaskController::class, 'triggerWebhook'])->name('tasks.webhook');
 Route::post('/telegram/test', [TaskController::class, 'testTelegram'])->name('telegram.test');
 
+Route::post('/webhook-settings', function (Request $request) {
+    $url = trim($request->input('n8n_webhook_url', ''));
+    session(['n8n_webhook_url' => $url]);
+    return redirect()->back()
+        ->withCookie(cookie()->forever('n8n_webhook_url', $url))
+        ->with('success', 'URL Webhook n8n berhasil disimpan!');
+})->name('settings.webhook');
+
 Route::get('/migrate', function () {
     try {
-        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-        \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
-        $output = \Illuminate\Support\Facades\Artisan::output();
+        Artisan::call('migrate', ['--force' => true]);
+        Artisan::call('db:seed', ['--force' => true]);
+        $output = Artisan::output();
         return response("<h2>✅ Database Migration & Seeding Berhasil!</h2><pre style='background:#1e293b;color:#a5b4fc;padding:16px;border-radius:8px;'>{$output}</pre><br><a href='/' style='display:inline-block;padding:10px 18px;background:#6366f1;color:#fff;border-radius:6px;text-decoration:none;'>👉 Buka Dashboard TaskFlow</a>", 200)
             ->header('Content-Type', 'text/html');
     } catch (\Throwable $e) {
@@ -32,4 +42,3 @@ Route::get('/migrate', function () {
             ->header('Content-Type', 'text/html');
     }
 })->name('migrate');
-
