@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: taskflow_app
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    environment:
+      APP_NAME: TaskFlow
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: taskflow
+      DB_USERNAME: taskflow_user
+      DB_PASSWORD: taskflow_secret
+      RUN_MIGRATIONS: "true"
+      N8N_WEBHOOK_URL: http://host.docker.internal:5678/webhook/taskflow-task
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - taskflow_storage:/var/www/html/storage
+
+  db:
+    image: postgres:16-alpine
+    container_name: taskflow_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: taskflow
+      POSTGRES_USER: taskflow_user
+      POSTGRES_PASSWORD: taskflow_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - taskflow_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskflow_user -d taskflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  taskflow_storage:
+  taskflow_pgdata:

@@ -1,0 +1,53 @@
+services:
+  - type: web
+    name: taskflow
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: APP_NAME
+        value: TaskFlow
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        generateValue: true
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: taskflow-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: taskflow-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: taskflow-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: taskflow-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: taskflow-db
+          property: password
+      - key: DB_SSLMODE
+        value: require
+      - key: RUN_MIGRATIONS
+        value: "true"
+      - key: N8N_WEBHOOK_URL
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+
+databases:
+  - name: taskflow-db
+    plan: free
+    databaseName: taskflow
+    user: taskflow

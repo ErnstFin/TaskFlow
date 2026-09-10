@@ -397,5 +397,58 @@ PASS  Tests\Feature\TaskApiTest
 
 Tests: 10 passed (34 assertions)
 ```
-#   T a s k F l o w  
- 
+
+---
+
+## 🌐 9. Panduan Hosting & Deployment
+
+> **Catatan Penting Hosting:**  
+> Aplikasi ini adalah **Full-stack Laravel PHP Application** (bukan sekadar frontend statis/Jamstack). Oleh karena itu, platform seperti **Netlify** tidak memiliki runtime PHP bawaan dan akan gagal saat build.
+
+Gunakan opsi hosting yang sesuai berikut:
+
+### Opsi A: Vercel (Serverless PHP)
+Repo ini telah dikonfigurasi dengan `vercel.json` dan `api/index.php` (runtime `vercel-php`).
+1. Hubungkan repo GitHub ke **[Vercel](https://vercel.com)**.
+2. Buat database cloud PostgreSQL gratis di **[Neon.tech](https://neon.tech)** atau **[Supabase](https://supabase.com)**.
+3. Di dashboard project Vercel > **Settings** > **Environment Variables**, tambahkan:
+   - `APP_KEY`: *(Generate dari lokal `php artisan key:generate --show`)*
+   - `APP_ENV`: `production`
+   - `APP_DEBUG`: `false`
+   - `DB_CONNECTION`: `pgsql`
+   - `DB_HOST`: *host database cloud Anda (misal: `ep-xxx.neon.tech`)*
+   - `DB_PORT`: `5432`
+   - `DB_DATABASE`: `taskflow`
+   - `DB_USERNAME`: *username db Anda*
+   - `DB_PASSWORD`: *password db Anda*
+   - `DB_SSLMODE`: `require`
+   - `N8N_WEBHOOK_URL`: *URL Webhook n8n Anda*
+   - `TELEGRAM_BOT_TOKEN`: *Token bot Telegram Anda*
+   - `TELEGRAM_CHAT_ID`: *Chat ID Telegram Anda*
+4. Jalankan deploy! Vercel akan otomatis meng-compile aset Vite dan mengeksekusi PHP via serverless function.
+
+---
+
+### Opsi B: Railway / Render (Docker 1-Click Deploy)
+Repo ini sudah dilengkapi dengan `Dockerfile`, `render.yaml`, dan `railway.json`.
+
+1. **Deploy ke [Render](https://render.com)**:
+   - Login ke Render > Klik **New Blueprint** > Pilih repo ini.
+   - Render akan otomatis membaca `render.yaml`, membuat PostgreSQL database, meng-compile Laravel + Nginx dalam container, dan menjalankan migrasi database secara otomatis.
+
+2. **Deploy ke [Railway](https://railway.app)**:
+   - Login ke Railway > **New Project** > **Deploy from GitHub repo**.
+   - Tambahkan plugin **PostgreSQL** di Railway.
+   - Tambahkan environment variable `APP_KEY` dan hubungkan variabel database.
+
+---
+
+### Opsi C: Menjalankan dengan Docker Compose Lokal / VPS
+```bash
+# Build dan jalankan Laravel + PostgreSQL 16
+docker-compose up -d --build
+
+# Akses aplikasi di browser
+http://localhost:8000
+```
+#   T a s k F l o w
