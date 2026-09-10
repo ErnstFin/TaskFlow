@@ -1,0 +1,168 @@
+{
+  "name": "TaskFlow - Webhook & Instant Deadline Check",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "taskflow-task",
+        "options": {}
+      },
+      "name": "TaskFlow Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "id": "node-webhook-1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Validasi Data Masuk dari TaskFlow\nconst body = $input.first().json.body || $input.first().json;\n\nif (!body.title || !body.deadline) {\n  throw new Error(\"Data tidak valid: 'title' dan 'deadline' wajib ada!\");\n}\n\nreturn {\n  task_id: body.task_id || null,\n  title: body.title,\n  description: body.description || \"-\",\n  deadline: body.deadline,\n  priority: (body.priority || 'medium').toUpperCase(),\n  status: (body.status || 'pending').toLowerCase()\n};"
+      },
+      "name": "Validasi Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ],
+      "id": "node-validate-2"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, title, description, deadline, priority, status \nFROM tasks \nWHERE id = {{$json.task_id || 0}} \nLIMIT 1;",
+        "options": {}
+      },
+      "name": "PostgreSQL Cek Data",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        680,
+        300
+      ],
+      "id": "node-postgres-3",
+      "credentials": {
+        "postgres": {
+          "id": "taskflow_pg_cred",
+          "name": "PostgreSQL TaskFlow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Hitung selisih waktu ke deadline\nconst inputData = $input.first().json;\n\n// Ambil data dari query PostgreSQL jika ada, atau gunakan data webhook sebelumnya\nconst task = (inputData.id) ? inputData : $('Validasi Data').first().json;\n\nconst deadlineDate = new Date(task.deadline);\nconst now = new Date();\n\nconst diffMs = deadlineDate.getTime() - now.getTime();\nconst diffMinutes = Math.floor(diffMs / (1000 * 60));\n\n// Kondisi deadline dekat: belum lewat waktu (diffMinutes >= 0) dan sisa waktu <= 60 menit\nconst isNear = (diffMinutes >= 0 && diffMinutes <= 60);\n\nreturn {\n  ...task,\n  diff_minutes: diffMinutes,\n  is_near_deadline: isNear,\n  formatted_deadline: deadlineDate.toLocaleString('id-ID', {\n    day: 'numeric',\n    month: 'long',\n    year: 'numeric',\n    hour: '2-digit',\n    minute: '2-digit'\n  })\n};"
+      },
+      "name": "Cek Deadline",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ],
+      "id": "node-calc-4"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.is_near_deadline}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "IF Deadline < 1 Jam",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "node-if-5"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$env.TELEGRAM_CHAT_ID || '8290532828'}}",
+        "text": "=⏰ Task Reminder\n\nTask: {{$json.title}}\nPriority: {{$json.priority}}\nDeadline: {{$json.formatted_deadline}}\n\nDeadline task ini kurang dari 1 jam lagi.\nJangan sampai tugasnya ikut deadline sebelum kamu mulai.",
+        "additionalFields": {}
+      },
+      "name": "Telegram Kirim Reminder",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1360,
+        220
+      ],
+      "id": "node-telegram-6",
+      "credentials": {
+        "telegramApi": {
+          "id": "taskflow_telegram_cred",
+          "name": "Telegram TaskFlow Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "TaskFlow Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validasi Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validasi Data": {
+      "main": [
+        [
+          {
+            "node": "PostgreSQL Cek Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PostgreSQL Cek Data": {
+      "main": [
+        [
+          {
+            "node": "Cek Deadline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cek Deadline": {
+      "main": [
+        [
+          {
+            "node": "IF Deadline < 1 Jam",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Deadline < 1 Jam": {
+      "main": [
+        [
+          {
+            "node": "Telegram Kirim Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

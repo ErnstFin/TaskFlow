@@ -1,0 +1,118 @@
+{
+  "name": "TaskFlow - Schedule Trigger Recurring Reminder",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger (Setiap 15 Menit)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ],
+      "id": "node-sched-1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, title, description, deadline, priority, status \nFROM tasks \nWHERE status = 'pending' \n  AND deadline >= NOW() \n  AND deadline <= (NOW() + INTERVAL '1 hour')\nORDER BY deadline ASC;",
+        "options": {}
+      },
+      "name": "PostgreSQL Cari Task Deadline Dekat",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        480,
+        300
+      ],
+      "id": "node-pg-query-2",
+      "credentials": {
+        "postgres": {
+          "id": "taskflow_pg_cred",
+          "name": "PostgreSQL TaskFlow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format tanggal dan data untuk tiap task yang mendekati deadline\nconst items = $input.all();\n\nif (items.length === 0 || !items[0].json.id) {\n  return [];\n}\n\nreturn items.map(item => {\n  const task = item.json;\n  const d = new Date(task.deadline);\n  \n  return {\n    json: {\n      ...task,\n      priority_label: (task.priority || 'Medium').charAt(0).toUpperCase() + (task.priority || 'Medium').slice(1),\n      formatted_deadline: d.toLocaleString('id-ID', {\n        day: 'numeric',\n        month: 'long',\n        year: 'numeric',\n        hour: '2-digit',\n        minute: '2-digit'\n      })\n    }\n  };\n});"
+      },
+      "name": "Format Pesan Reminder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "id": "node-format-3"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$env.TELEGRAM_CHAT_ID || '8290532828'}}",
+        "text": "=⏰ Task Reminder\n\nTask: {{$json.title}}\nPriority: {{$json.priority_label}}\nDeadline: {{$json.formatted_deadline}}\n\nDeadline task ini kurang dari 1 jam lagi.\nJangan sampai tugasnya ikut deadline sebelum kamu mulai.",
+        "additionalFields": {}
+      },
+      "name": "Telegram Kirim Reminder",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        960,
+        300
+      ],
+      "id": "node-tele-4",
+      "credentials": {
+        "telegramApi": {
+          "id": "taskflow_telegram_cred",
+          "name": "Telegram TaskFlow Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (Setiap 15 Menit)": {
+      "main": [
+        [
+          {
+            "node": "PostgreSQL Cari Task Deadline Dekat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PostgreSQL Cari Task Deadline Dekat": {
+      "main": [
+        [
+          {
+            "node": "Format Pesan Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Pesan Reminder": {
+      "main": [
+        [
+          {
+            "node": "Telegram Kirim Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
