@@ -29,29 +29,45 @@ class TaskController extends Controller
         $statusFilter = $request->query('status');
         $priorityFilter = $request->query('priority');
 
-        $query = Task::query();
+        $tasks = collect();
+        $totalCount = 0;
+        $pendingCount = 0;
+        $completedCount = 0;
+        $nearestTask = null;
 
-        if ($statusFilter && in_array($statusFilter, ['pending', 'completed'])) {
-            $query->where('status', $statusFilter);
-        }
+        try {
+            // Auto-migrate if tasks table does not exist
+            if (!\Illuminate\Support\Facades\Schema::hasTable('tasks')) {
+                \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+                \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
+            }
 
-        if ($priorityFilter && in_array($priorityFilter, ['low', 'medium', 'high'])) {
-            $query->where('priority', $priorityFilter);
-        }
+            $query = Task::query();
 
-        $tasks = $query->orderBy('deadline', 'asc')->get();
+            if ($statusFilter && in_array($statusFilter, ['pending', 'completed'])) {
+                $query->where('status', $statusFilter);
+            }
 
-        // Statistics
-        $totalCount = Task::count();
-        $pendingCount = Task::pending()->count();
-        $completedCount = Task::completed()->count();
+            if ($priorityFilter && in_array($priorityFilter, ['low', 'medium', 'high'])) {
+                $query->where('priority', $priorityFilter);
+            }
 
-        // Nearest pending deadline
-        $nearestTask = Task::nearestUpcoming()->first();
+            $tasks = $query->orderBy('deadline', 'asc')->get();
 
-        // If no future pending task, take the closest pending task overall
-        if (!$nearestTask) {
-            $nearestTask = Task::pending()->orderBy('deadline', 'asc')->first();
+            // Statistics
+            $totalCount = Task::count();
+            $pendingCount = Task::pending()->count();
+            $completedCount = Task::completed()->count();
+
+            // Nearest pending deadline
+            $nearestTask = Task::nearestUpcoming()->first();
+
+            // If no future pending task, take the closest pending task overall
+            if (!$nearestTask) {
+                $nearestTask = Task::pending()->orderBy('deadline', 'asc')->first();
+            }
+        } catch (\Throwable $e) {
+            session()->flash('warning', 'Database belum terhubung atau perlu migrasi: ' . $e->getMessage() . '. Anda juga dapat menjalankan /migrate');
         }
 
         return view('dashboard', compact(
